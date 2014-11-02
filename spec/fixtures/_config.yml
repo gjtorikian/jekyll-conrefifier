@@ -1,0 +1,5 @@
+gems:
+  - jekyll-conrefifier
+collections:
+  articles:
+    output: true

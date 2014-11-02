@@ -1,0 +1,7 @@
+Bootcamp:
+  - Set Up Git
+  - Create A Repo
+  - Fork A Repo
+  - Be Social
+  - '{{ site.data.conrefs.product_name[site.audience] }} Glossary'
+  - Good Resources for Learning Git and GitHub

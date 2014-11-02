@@ -27,10 +27,12 @@ module Jekyll
       data.each_pair do |data_file, data_set|
         if data_set.is_a? Hash
           data_set.each_pair do |key, values|
-            values.each_with_index do |value, i|
-              if value =~ /\{\{.+?\}\}/
-                value = Liquid::Template.parse(value).render({ "site" => { "data" => data }.merge(config) })
-                data[data_file][key][i] = value
+            if values.is_a? Array
+              values.each_with_index do |value, i|
+                if value =~ /\{\{.+?\}\}/
+                  value = Liquid::Template.parse(value).render({ "site" => { "data" => data }.merge(config) })
+                  data[data_file][key][i] = value
+                end
               end
             end
           end

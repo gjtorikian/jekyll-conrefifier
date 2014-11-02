@@ -1,5 +1,5 @@
 ---
-title: This is {{ site.data.conrefs.product_name[site.audience] }}
+title: This is very {{ site.data.conrefs.product_type }}
 ---
 
 Some page.

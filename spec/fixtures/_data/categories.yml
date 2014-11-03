@@ -5,3 +5,6 @@ Bootcamp:
   - Be Social
   - '{{ site.data.conrefs.product_name[site.audience] }} Glossary'
   - Good Resources for Learning Git and GitHub
+
+'{{ site.data.conrefs.product_type }}':
+  - Something something

@@ -6,4 +6,12 @@ collections:
     output: true
     permalink: /articles/:title/
 
+defaults:
+  -
+    scope:
+      path: ""
+      type: "_articles"
+    values:
+      layout: "article"
+
 audience: 'dotcom'

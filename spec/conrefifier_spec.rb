@@ -2,11 +2,11 @@ require 'spec_helper'
 
 describe("Conrefifier") do
   it "writes the proper page for simple substitutions" do
-    expect(@dest.join("articles", "p-this-is-very-amazing-p", "index.html")).to exist
+    expect(@dest.join("articles", "this-is-very-amazing", "index.html")).to exist
   end
 
   it "writes the proper page for compicated substitutions" do
-    expect(@dest.join("articles", "p-welcome-to-github-p", "index.html")).to exist
+    expect(@dest.join("articles", "welcome-to-github", "index.html")).to exist
   end
 
   it "writes the proper content for values after fetching info from a data file" do
@@ -24,7 +24,7 @@ describe("Conrefifier") do
   end
 
   it "writes the proper content for values with Markdown" do
-    index_file = @dest.join("articles", "p-this-is-strong-wow-strong-p", "index.html")
+    index_file = @dest.join("articles", "this-is-strong-wow-strong", "index.html")
     expect(index_file).to exist
     index_contents = File.read(index_file)
     expect(index_contents).to include("<strong>wow!</strong>")

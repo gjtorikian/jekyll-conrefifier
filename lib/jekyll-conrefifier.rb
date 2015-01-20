@@ -24,6 +24,7 @@ module Jekyll
         if value =~ /\{\{.+?\}\}/
           value = Liquid::Template.parse(value).render({ "site" => { "data" => @site.data }.merge(@site.config) })
           @data[key] = Jekyll::Renderer.new(@site, self).convert(value)
+          @data[key] = @data[key].sub(/^<p>/, '').sub(/<\/p>$/, '')
         end
       end
     end

@@ -16,6 +16,8 @@ Some page.
 
 In this case, title would equals the value of `product_type` in [a data file](http://jekyllrb.com/docs/datafiles/) called *conrefs*.
 
+Note that Markdown rendering is enabled for this content.
+
 ## Per-audience filtering
 
 You can scope your variables to an audience value. For example, given a conref file that looks like this:

@@ -4,3 +4,5 @@ product_name:
   11.10.340: GitHub Enterprise
 
 product_type: 'Amazing'
+
+bold_title: '**wow!**'

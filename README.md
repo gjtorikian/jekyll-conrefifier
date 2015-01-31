@@ -56,3 +56,38 @@ Bootcamp:
 ```
 
 The value renders out to "GitHub Glossary", just like above.
+
+## Liquid filtering within data files
+
+You can add filters within data files, to show or hide content depending on certain variable criteria.
+
+For example, given a data file that looks like this:
+
+``` yaml
+Listing:
+  {% if page.version == '2.0' %}
+  - Article v2.0
+  {% endif %}
+  {% if page.version != '2.0' %}
+  - Article v2.1
+  {% endif %}
+
+{% unless page.version == '2.0' %}
+Ignored:
+  - Item1
+  - Item 2
+{% endunless %}
+```
+
+If `page.version` is equal to `'2.0'`, only `Listing: - Artivle v2.0` will render.
+
+You'll need to add a new entry in your `config.yml` that defines your variables, like this:
+
+``` yaml
+
+data_file_variables:
+  version: '2.0'
+```
+
+In your data file, every variable should be prefixed with `page.`.
+

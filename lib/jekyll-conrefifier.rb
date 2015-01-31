@@ -62,15 +62,9 @@ module Jekyll
           else
             contents = File.read(path)
             if (matches = contents.scan /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m) && config['data_file_variables']
-              filename = File.basename path
-              data_match = config['data_file_variables'].find { |d| d['names'].include? filename }
-              unless data_match.nil?
-                version = data_match['version']
-                temp_config = { 'page' => { 'version' => version } }
-                temp_config = self.config.merge(temp_config)
-                matches.each do |match|
-                  contents = contents.sub(match.first, Liquid::Template.parse(match.first).render(temp_config))
-                end
+              temp_config = self.config.merge({ 'page' => config['data_file_variables'] })
+              matches.each do |match|
+                contents = contents.sub(match.first, Liquid::Template.parse(match.first).render(temp_config))
               end
             end
             data[key] = SafeYAML.load(contents)

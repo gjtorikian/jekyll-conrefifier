@@ -17,6 +17,4 @@ defaults:
 audience: 'dotcom'
 
 data_file_variables:
-  -
-    names: ['filtered_categories.yml']
-    version: '2.0'
+  version: '2.0'

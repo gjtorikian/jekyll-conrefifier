@@ -61,16 +61,31 @@ module Jekyll
             data[key] = CSV.read(path, :headers => true).map(&:to_hash)
           else
             contents = File.read(path)
-            if (matches = contents.scan /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m) && config['data_file_variables']
-              temp_config = self.config.merge({ 'page' => config['data_file_variables'] })
-              matches.each do |match|
-                contents = contents.sub(match.first, Liquid::Template.parse(match.first).render(temp_config))
+            if (matches = contents.scan /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
+              unless matches.empty?
+                filename = File.basename(path)
+                contents = apply_vars_to_datafile(contents, filename, matches, config['data_file_variables'])
               end
             end
             data[key] = SafeYAML.load(contents)
           end
         end
       end
+    end
+
+    def apply_vars_to_datafile(contents, filename, matches, data_file_variables)
+      return contents if data_file_variables.nil?
+      data_vars = {}
+      scopes = data_file_variables.select { |v| v['scope']['path'].empty? || Regexp.new(v['scope']['path']) =~ filename }
+      scopes.each do |scope|
+        data_vars = data_vars.merge(scope['values'])
+      end
+      temp_config = self.config.merge({ 'page' => data_vars })
+      matches.each do |match|
+        contents = contents.sub(match.first, Liquid::Template.parse(match.first).render(temp_config))
+      end
+
+      contents
     end
 
     # allow us to use any variable within Jekyll data files; for example:

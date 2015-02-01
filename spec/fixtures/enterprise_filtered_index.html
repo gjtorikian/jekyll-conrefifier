@@ -1,0 +1,26 @@
+---
+---
+<ul id="categories">
+{% for category_hash in site.data.enterprise_filtered_categories %}
+  {% assign category_title    = category_hash[0] %}
+  {% assign category_articles = category_hash[1] %}
+
+  <li class="category">
+
+    <h5>
+      <span class="handle"></span>
+      <a href="{{ site.baseurl }}/categories/{{ category_title | slugify }}">{{ category_title }}</a>
+    </h5>
+
+    <ul class="chevron list">
+    {% for title in category_articles %}
+      <li class="article">
+        <a href="{{ site.baseurl }}/articles/{{ title | slugify }}" class="km-article-link">{{ title }}</a>
+      </li>
+    {% endfor %}
+    </ul>
+
+  </li>
+
+{% endfor %}
+</ul>

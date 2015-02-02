@@ -1,0 +1,25 @@
+Bootcamp:
+  - Set Up Git
+  - Create A Repo
+  - Fork A Repo
+  - Be Social
+  - '{{ site.data.conrefs.product_name[site.audience] }} Glossary'
+  - Good Resources for Learning Git and GitHub
+
+Listing:
+  {% if page.version == '2.0' %}
+  - Article v2.0
+  {% endif %}
+  {% if page.version != '2.0' %}
+  - Article v2.1
+  {% endif %}
+  - Wow
+  {% if page.version == '2.0' or page.version == '2.1' %}
+  - Still show
+  {% endif %}
+
+{% unless page.version == '2.0' %}
+Ignored:
+  - Item1
+  - Item 2
+{% endunless %}

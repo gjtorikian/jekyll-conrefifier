@@ -22,7 +22,7 @@ module Jekyll
       old_read(opts)
       @data.each_pair do |key, value|
         if value =~ /\{\{.+?\}\}/
-          value = Liquid::Template.parse(value).render({ "site" => { "data" => @site.data }.merge(@site.config) })
+          value = Liquid::Template.parse(value).render({ 'site' => { 'data' => @site.data }.merge(@site.config) })
           @data[key] = Jekyll::Renderer.new(@site, self).convert(value)
           @data[key] = @data[key].sub(/^<p>/, '').sub(/<\/p>$/, '').strip
         end
@@ -32,6 +32,61 @@ module Jekyll
 
   class Site
     alias_method :old_read, :read
+    alias_method :old_read_data_to, :read_data_to
+
+    def in_source_dir(*paths)
+      paths.reduce(source) do |base, path|
+        Jekyll.sanitized_path(base, path)
+      end
+    end
+
+    # allows us to filter data file content out on conditionals, eg. `{% if page.version == ... %}`
+    def read_data_to(dir, data)
+      return unless File.directory?(dir) && (!safe || !File.symlink?(dir))
+
+      entries = Dir.chdir(dir) do
+        Dir['*.{yaml,yml,json,csv}'] + Dir['*'].select { |fn| File.directory?(fn) }
+      end
+
+      entries.each do |entry|
+        path = in_source_dir(dir, entry)
+        next if File.symlink?(path) && safe
+
+        key = sanitize_filename(File.basename(entry, '.*'))
+        if File.directory?(path)
+          read_data_to(path, data[key] = {})
+        else
+          case File.extname(path).downcase
+          when '.csv'
+            data[key] = CSV.read(path, :headers => true).map(&:to_hash)
+          else
+            contents = File.read(path)
+            if (matches = contents.scan /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
+              unless matches.empty?
+                filename = File.basename(path)
+                contents = apply_vars_to_datafile(contents, filename, matches, config['data_file_variables'])
+              end
+            end
+            data[key] = SafeYAML.load(contents)
+          end
+        end
+      end
+    end
+
+    def apply_vars_to_datafile(contents, filename, matches, data_file_variables)
+      return contents if data_file_variables.nil?
+      data_vars = {}
+      scopes = data_file_variables.select { |v| v['scope']['path'].empty? || Regexp.new(v['scope']['path']) =~ filename }
+      scopes.each do |scope|
+        data_vars = data_vars.merge(scope['values'])
+      end
+      temp_config = self.config.merge({ 'page' => data_vars })
+      matches.each do |match|
+        contents = contents.sub(match.first, Liquid::Template.parse(match.first).render(temp_config))
+      end
+
+      contents
+    end
 
     # allow us to use any variable within Jekyll data files; for example:
     # - '{{ site.data.conrefs.product_name[site.audience] }} Glossary'

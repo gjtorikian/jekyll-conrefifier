@@ -29,4 +29,28 @@ describe("Conrefifier") do
     index_contents = File.read(index_file)
     expect(index_contents).to include("<strong>wow!</strong>")
   end
+
+  it 'filters simple items' do
+    filtered_index_file = @dest.join("filtered_index.html")
+    expect(filtered_index_file).to exist
+    filtered_index_contents = File.read(filtered_index_file)
+    expect(filtered_index_contents).to include("GitHub Glossary")
+    expect(filtered_index_contents).to include("Fork A Repo")
+    expect(filtered_index_contents).to include("Article v2.0")
+    expect(filtered_index_contents).to include("Still show")
+    expect(filtered_index_contents).to_not include("Article v2.1")
+    expect(filtered_index_contents).to_not include("Ignored")
+  end
+
+  it 'filters items when a prefix is provided' do
+    enterprise_filtered_index = @dest.join("enterprise_filtered_index.html")
+    expect(enterprise_filtered_index).to exist
+    filtered_index_contents = File.read(enterprise_filtered_index)
+    expect(filtered_index_contents).to include("GitHub Glossary")
+    expect(filtered_index_contents).to include("Fork A Repo")
+    expect(filtered_index_contents).to include("Article v2.1")
+    expect(filtered_index_contents).to include("Still show")
+    expect(filtered_index_contents).to_not include("Article v2.0")
+    expect(filtered_index_contents).to_not include("Ignored")
+  end
 end

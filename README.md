@@ -56,3 +56,61 @@ Bootcamp:
 ```
 
 The value renders out to "GitHub Glossary", just like above.
+
+## Liquid filtering within data files
+
+You can add filters within data files, to show or hide content depending on certain variable criteria.
+
+For example, given a data file that looks like this:
+
+``` yaml
+Listing:
+  {% if page.version == '2.0' %}
+  - Article v2.0
+  {% endif %}
+  {% if page.version != '2.0' %}
+  - Article v2.1
+  {% endif %}
+
+{% unless page.version == '2.0' %}
+Ignored:
+  - Item1
+  - Item 2
+{% endunless %}
+```
+
+If `page.version` is equal to `'2.0'`, only `Listing: - Artivle v2.0` will render.
+
+To support such a syntax, you'll need to add a new entry in your `config.yml` that defines your variables, like this:
+
+``` yaml
+
+data_file_variables:
+  -
+    scope:
+      path: ""
+    values:
+      version: "2.0"
+
+```
+
+`data_file_variables` is an array of hashes. The `scope` key defines which data files are affected by the variables; the data file must match the path define in `path`. Regular expression syntaxes are supported in `path`, and a blank `path` refers to every data file. The `values` key specifies every key you want to support in your data file.
+
+Here's a more complex example:
+
+``` yaml
+data_file_variables:
+  -
+    scope:
+      path: ""
+    values:
+      version: "2.0"
+  -
+    scope:
+      path: "ent\\w+_"
+    values:
+      version: "2.1"
+
+```
+
+In this case, every data file has a `page.version` of `2.0`. However, only data files prefixed with `ent`, containing one or more word characters (`\w+`), and followed by an underscore (`_`), have a value of `2.1`.

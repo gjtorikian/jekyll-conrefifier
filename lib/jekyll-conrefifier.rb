@@ -63,8 +63,7 @@ module Jekyll
             contents = File.read(path)
             if (matches = contents.scan /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
               unless matches.empty?
-                filename = File.basename(path)
-                contents = apply_vars_to_datafile(contents, filename, matches, config['data_file_variables'])
+                contents = apply_vars_to_datafile(contents, path, matches, config['data_file_variables'])
               end
             end
             data[key] = SafeYAML.load(contents)
@@ -73,10 +72,10 @@ module Jekyll
       end
     end
 
-    def apply_vars_to_datafile(contents, filename, matches, data_file_variables)
+    def apply_vars_to_datafile(contents, path, matches, data_file_variables)
       return contents if data_file_variables.nil?
       data_vars = {}
-      scopes = data_file_variables.select { |v| v['scope']['path'].empty? || Regexp.new(v['scope']['path']) =~ filename }
+      scopes = data_file_variables.select { |v| v['scope']['path'].empty? || Regexp.new(v['scope']['path']) =~ path }
       scopes.each do |scope|
         data_vars = data_vars.merge(scope['values'])
       end

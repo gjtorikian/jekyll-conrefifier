@@ -3,7 +3,7 @@ Bootcamp:
   - Create A Repo
   - Fork A Repo
   - Be Social
-  - '{{ site.data.conrefs.product_name[site.audience] }} Glossary'
+  - '{{ site.data.conrefs.product_name[page.version] }} Glossary'
   - Good Resources for Learning Git and GitHub
 
 '{{ site.data.conrefs.product_type }}':

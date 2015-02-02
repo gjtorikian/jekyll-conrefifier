@@ -10,7 +10,7 @@ describe("Conrefifier") do
   end
 
   it "writes the proper content for values after fetching info from a data file" do
-    index_file = @dest.join("index.html")
+    index_file = @dest.join('index.html')
     expect(index_file).to exist
     index_contents = File.read(index_file)
     expect(index_contents).to include("GitHub Glossary")
@@ -34,7 +34,7 @@ describe("Conrefifier") do
     filtered_index_file = @dest.join("filtered_index.html")
     expect(filtered_index_file).to exist
     filtered_index_contents = File.read(filtered_index_file)
-    expect(filtered_index_contents).to include("GitHub Glossary")
+    expect(filtered_index_contents).to include("GitHub Enterprise Glossary")
     expect(filtered_index_contents).to include("Fork A Repo")
     expect(filtered_index_contents).to include("Article v2.0")
     expect(filtered_index_contents).to include("Still show")
@@ -46,11 +46,22 @@ describe("Conrefifier") do
     enterprise_filtered_index = @dest.join("enterprise_filtered_index.html")
     expect(enterprise_filtered_index).to exist
     filtered_index_contents = File.read(enterprise_filtered_index)
-    expect(filtered_index_contents).to include("GitHub Glossary")
+    expect(filtered_index_contents).to include("GitHub Enterprise Glossary")
     expect(filtered_index_contents).to include("Fork A Repo")
     expect(filtered_index_contents).to include("Article v2.1")
     expect(filtered_index_contents).to include("Still show")
     expect(filtered_index_contents).to_not include("Article v2.0")
     expect(filtered_index_contents).to_not include("Ignored")
+  end
+
+  it 'uses the data_render tag to provide filtered data in a layout' do
+    filtering_layout = @dest.join("filtering_layout.html")
+    expect(filtering_layout).to exist
+    filtering_layout_contents = File.read(filtering_layout)
+    expect(filtering_layout_contents).to include('GitHub Enterprise Glossary')
+    expect(filtering_layout_contents.scan(/Bootcamp/).count).to eq(2)
+    expect(filtering_layout_contents.scan(/Article v2.1/).count).to eq(1)
+    expect(filtering_layout_contents.scan(/Article v2.0/).count).to eq(1)
+    expect(filtering_layout_contents.scan(/Ignored/).count).to eq(1)
   end
 end

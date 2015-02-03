@@ -1,16 +1,3 @@
-class Hash
-  def insert_before(key, kvpair)
-    arr = to_a
-    pos = arr.index(arr.assoc(key))
-    if pos
-      arr.insert(pos, kvpair)
-    else
-      arr << kvpair
-    end
-    replace Hash[arr]
-  end
-end
-
 module Jekyll
   class Document
     alias_method :old_read, :read
@@ -32,7 +19,6 @@ module Jekyll
 
   class Site
     alias_method :old_read, :read
-    alias_method :old_read_data_to, :read_data_to
 
     def in_source_dir(*paths)
       paths.reduce(source) do |base, path|
@@ -40,7 +26,7 @@ module Jekyll
       end
     end
 
-    # allows us to filter data file content out on conditionals, eg. `{% if page.version == ... %}`
+    # allows us to filter data file contents via conditionals, eg. `{% if page.version == ... %}`
     def read_data_to(dir, data)
       return unless File.directory?(dir) && (!safe || !File.symlink?(dir))
 
@@ -48,8 +34,9 @@ module Jekyll
         Dir['*.{yaml,yml,json,csv}'] + Dir['*'].select { |fn| File.directory?(fn) }
       end
 
+      # all of this is copied from the Jekyll source, except...
       entries.each do |entry|
-        path = in_source_dir(dir, entry)
+        path = self.in_source_dir(dir, entry)
         next if File.symlink?(path) && safe
 
         key = sanitize_filename(File.basename(entry, '.*'))
@@ -60,6 +47,7 @@ module Jekyll
           when '.csv'
             data[key] = CSV.read(path, :headers => true).map(&:to_hash)
           else
+            # if we hit upon if/unless conditionals, we'll need to pause and render them
             contents = File.read(path)
             if (matches = contents.scan /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
               unless data_file_variables(path).nil?
@@ -72,6 +60,10 @@ module Jekyll
         end
       end
 
+      # once we're all done, we need to iterate once more to parse out `{{ }}` blocks.
+      # two reasons for this: one, we need to collect every data file before attempting to
+      # parse these vars; two, the Liquid parse above obliterates these tags, so we
+      # first need to convert them into `[[ }}`, and *then* continue with the parse
       data.each_pair do |datafile, value|
         yaml_dump = YAML::dump value
         yaml_dump = yaml_dump.gsub(/\[\[/, '{{')
@@ -80,6 +72,7 @@ module Jekyll
       end
     end
 
+    # apply the custom scoope plus the rest of the `site.data` information
     def apply_vars_to_datafile(contents, matches, path)
       return contents if matches.empty?
 
@@ -95,6 +88,7 @@ module Jekyll
       contents
     end
 
+    # fetch the custom scope vars, as defined in _config.yml
     def data_file_variables(path)
       data_vars = {}
       scopes = config['data_file_variables'].select { |v| v['scope']['path'].empty? || Regexp.new(v['scope']['path']) =~ path }

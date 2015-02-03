@@ -81,7 +81,13 @@ module Jekyll
       config = { 'site' => { 'data' => self.data } }.merge(config)
 
       matches.each do |match|
-        contents = contents.sub(match.first, Liquid::Template.parse(match.first).render(config))
+        parsed_content = begin
+                          Liquid::Template.parse(match.first).render(config)
+                         rescue
+                          match.first
+                         end
+
+        contents = contents.sub(match.first, parsed_content)
       end
 
       contents

@@ -53,6 +53,7 @@ module Jekyll
               unless data_file_variables(path).nil?
                 contents = contents.gsub(/\{\{/, '[[')
                 contents = apply_vars_to_datafile(contents, matches, path)
+                contents = contents.gsub(/\[\[/, '{{')
               end
             end
             data[key] = SafeYAML.load(contents)
@@ -66,8 +67,6 @@ module Jekyll
       # first need to convert them into `[[ }}`, and *then* continue with the parse
       data.each_pair do |datafile, value|
         yaml_dump = YAML::dump value
-        yaml_dump = yaml_dump.gsub(/\[\[/, '{{')
-
         data[datafile] = SafeYAML.load transform_liquid_variables(yaml_dump, datafile)
       end
     end

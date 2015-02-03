@@ -1,0 +1,20 @@
+
+{% data_render site.data.filtered_categories(:version => 2.0) %}
+
+{% for category_hash in site.data.data_render %}
+  {% assign category_title    = category_hash[0] %}
+  {% assign category_articles = category_hash[1] %}
+  {{ category_title }}
+  {{ category_articles }}
+{% endfor %}
+
+{{ content }}
+
+{% data_render site.data.filtered_categories(:version => 2.1) %}
+
+{% for category_hash in site.data.data_render %}
+  {% assign category_title    = category_hash[0] %}
+  {% assign category_articles = category_hash[1] %}
+  {{ category_title }}
+  {{ category_articles }}
+{% endfor %}

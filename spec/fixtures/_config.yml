@@ -24,6 +24,11 @@ data_file_variables:
       version: "2.0"
   -
     scope:
+      path: "^categories"
+    values:
+      version: "dotcom"
+  -
+    scope:
       path: "ent\\w+_"
     values:
       version: "2.1"

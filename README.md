@@ -114,3 +114,30 @@ data_file_variables:
 ```
 
 In this case, every data file has a `page.version` of `2.0`. However, only data files prefixed with `ent`, containing one or more word characters (`\w+`), and followed by an underscore (`_`), have a value of `2.1`.
+
+## Rendering filtered data files in layouts
+
+As an addition to the above, a new tag, `data_render`, can be used to iterate over filtered data files.
+
+You can call this filter by:
+
+* Passing a data file name to `data_render`
+* Passing any optional variables to this filter
+* The YAML information will be temporarily stored within `site.data.data_render`
+* You can iterate over `site.data.data_render` to walk along the data
+* Multiple calls to `data_render` rewrite to `site.data.data_render`
+
+Here's an example:
+
+``` liquid
+{% data_render site.data.filtered_categories(:version => 2.0) %}
+
+{% for category_hash in site.data.data_render %}
+  {% assign category_title    = category_hash[0] %}
+  {% assign category_articles = category_hash[1] %}
+  {{ category_title }}
+  {{ category_articles }}
+{% endfor %}
+```
+
+Note that data files are read *once*, to improve performance. The variables passed in are evaluated for each call.

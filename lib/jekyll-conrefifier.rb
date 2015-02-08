@@ -87,7 +87,7 @@ module Jekyll
                           match.first
                          end
 
-        contents = contents.sub(match.first, parsed_content)
+        contents = contents.sub(match.first, parsed_content) unless parsed_content.empty?
       end
 
       contents

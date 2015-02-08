@@ -86,8 +86,9 @@ module Jekyll
                          rescue
                           match.first
                          end
-
-        contents = contents.sub(match.first, parsed_content) unless parsed_content.empty?
+        unless match.first =~ /\{\{/ && parsed_content.empty?
+          contents = contents.sub(match.first, parsed_content)
+        end
       end
 
       contents

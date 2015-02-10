@@ -1,4 +1,17 @@
 module Jekyll
+  module ConrefifierUtils
+    # fetch the custom scope vars, as defined in _config.yml
+    def self.data_file_variables(config, path)
+      data_vars = {}
+      scopes = config['data_file_variables'].select { |v| v['scope']['path'].empty? || Regexp.new(v['scope']['path']) =~ path }
+      scopes.each do |scope|
+        data_vars = data_vars.merge(scope['values'])
+      end
+
+      data_vars
+    end
+  end
+
   class Document
     alias_method :old_read, :read
 
@@ -8,8 +21,12 @@ module Jekyll
     def read(opts = {})
       old_read(opts)
       @data.each_pair do |key, value|
-        if value =~ /\{\{.+?\}\}/
-          value = Liquid::Template.parse(value).render({ 'site' => { 'data' => @site.data }.merge(@site.config) })
+        if value =~ /\{\{.+?\}\}/ || value =~ /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/
+          data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(@site.config, opts[:actual_path] || path)
+          config = { 'page' => data_vars }
+          config = { 'site' => { 'data' => @site.data, 'config' => @site.config } }.merge(config)
+
+          value = Liquid::Template.parse(value).render(config)
           @data[key] = Jekyll::Renderer.new(@site, self).convert(value)
           @data[key] = @data[key].sub(/^<p>/, '').sub(/<\/p>$/, '').strip
         end
@@ -50,7 +67,7 @@ module Jekyll
             # if we hit upon if/unless conditionals, we'll need to pause and render them
             contents = File.read(path)
             if (matches = contents.scan /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
-              unless data_file_variables(path).nil?
+              unless ConrefifierUtils.data_file_variables(config, path).nil?
                 contents = contents.gsub(/\{\{/, '[[')
                 contents = apply_vars_to_datafile(contents, matches, path)
                 contents = contents.gsub(/\[\[/, '{{')
@@ -75,10 +92,10 @@ module Jekyll
     def apply_vars_to_datafile(contents, matches, path)
       return contents if matches.empty?
 
-      data_vars = path.nil? ? {} : data_file_variables(path)
+      data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(config, path)
 
       config = { 'page' => data_vars }
-      config = { 'site' => { 'data' => self.data } }.merge(config)
+      config = { 'site' => { 'data' => self.data, 'config' => self.config } }.merge(config)
 
       matches.each do |match|
         parsed_content = begin
@@ -92,17 +109,6 @@ module Jekyll
       end
 
       contents
-    end
-
-    # fetch the custom scope vars, as defined in _config.yml
-    def data_file_variables(path)
-      data_vars = {}
-      scopes = config['data_file_variables'].select { |v| v['scope']['path'].empty? || Regexp.new(v['scope']['path']) =~ path }
-      scopes.each do |scope|
-        data_vars = data_vars.merge(scope['values'])
-      end
-
-      data_vars
     end
 
     # allow us to use any variable within Jekyll data files; for example:
@@ -138,7 +144,7 @@ module Jekyll
       data_file = context.registers[:site].data["data_render_#{@id}"]
       return data_file unless data_file.nil?
 
-      path = @id.sub('.', '/')
+      path = @id.gsub('.', '/')
       data_source = File.join(context.registers[:site].source, context.registers[:site].config['data_source'])
       data_file = File.read("#{data_source}/#{path}.yml")
       context.registers[:site].data["data_render_#{@id}"] = data_file

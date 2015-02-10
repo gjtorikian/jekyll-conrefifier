@@ -24,7 +24,7 @@ module Jekyll
         if value =~ /\{\{.+?\}\}/ || value =~ /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/
           data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(@site.config, opts[:actual_path] || path)
           config = { 'page' => data_vars }
-          config = { 'site' => { 'data' => @site.data } }.merge(config)
+          config = { 'site' => { 'data' => @site.data, 'config' => @site.config } }.merge(config)
 
           value = Liquid::Template.parse(value).render(config)
           @data[key] = Jekyll::Renderer.new(@site, self).convert(value)
@@ -95,7 +95,7 @@ module Jekyll
       data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(config, path)
 
       config = { 'page' => data_vars }
-      config = { 'site' => { 'data' => self.data } }.merge(config)
+      config = { 'site' => { 'data' => self.data, 'config' => self.config } }.merge(config)
 
       matches.each do |match|
         parsed_content = begin

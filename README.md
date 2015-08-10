@@ -130,7 +130,7 @@ You can call this filter by:
 Here's an example:
 
 ``` liquid
-{% data_render site.data.filtered_categories(:version => 2.0) %}
+{% data_render site.data.filtered_categories(:version => 2.0.to_s) %}
 
 {% for category_hash in site.data.data_render %}
   {% assign category_title    = category_hash[0] %}

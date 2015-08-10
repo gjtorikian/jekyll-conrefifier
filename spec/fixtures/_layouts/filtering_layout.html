@@ -1,5 +1,5 @@
 
-{% data_render site.data.filtered_categories(:version => 2.0) %}
+{% data_render site.data.filtered_categories(:version => 2.0.to_s) %}
 
 {% for category_hash in site.data.data_render %}
   {% assign category_title    = category_hash[0] %}
@@ -10,7 +10,7 @@
 
 {{ content }}
 
-{% data_render site.data.filtered_categories(:version => 2.1) %}
+{% data_render site.data.filtered_categories(:version => 2.1.to_s) %}
 
 {% for category_hash in site.data.data_render %}
   {% assign category_title    = category_hash[0] %}

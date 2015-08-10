@@ -134,7 +134,7 @@ module Jekyll
         last_key = keys.last.sub(paren_arg[0], '')
         keys.pop
         keys << last_key
-        @hash_args = paren_arg[1].gsub(/[{}:]/,'').split(', ').map{|h| h1,h2 = h.split('=>'); {h1.strip => h2.strip}}.reduce(:merge)
+        @hash_args = paren_arg[1].gsub(/[{}:]/,'').split(', ').map{|h| h1,h2 = h.split('=>'); {h1.strip => eval(h2.strip)}}.reduce(:merge)
       end
       @keys = keys
       @id = keys.join('-')

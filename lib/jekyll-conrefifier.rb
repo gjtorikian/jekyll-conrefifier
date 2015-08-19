@@ -7,28 +7,63 @@ module Jekyll
       scopes.each do |scope|
         data_vars = data_vars.merge(scope['values'])
       end
-
       data_vars
+    end
+
+    def self.setup_config(site, opts, path)
+      data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(site.config, opts[:actual_path] || path)
+      config = { 'page' => data_vars }
+      config = { 'site' => { 'data' => site.data, 'config' => site.config } }.merge(config)
+    end
+
+    def self.convert(content, data_vars)
+      value = Liquid::Template.parse(content).render(data_vars)
+      value = value.gsub('"', '\"')
     end
   end
 
   class Document
-    alias_method :old_read, :read
-
     # allow us to use any variable within Jekyll Frontmatter; for example:
     # title: What are {{ site.data.conrefs.product_name[site.audience] }} Pages?
     # renders as "GitHub Pages?" for dotcom, but "GitHub Enterprise Pages?" for Enterprise
     def read(opts = {})
-      old_read(opts)
-      @data.each_pair do |key, value|
-        if value =~ /\{\{.+?\}\}/ || value =~ /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/
-          data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(@site.config, opts[:actual_path] || path)
-          config = { 'page' => data_vars }
-          config = { 'site' => { 'data' => @site.data, 'config' => @site.config } }.merge(config)
+      if yaml_file?
+        @data = SafeYAML.load_file(path)
+      else
+        begin
+          defaults = @site.frontmatter_defaults.all(url, collection.label.to_sym)
+          unless defaults.empty?
+            @data = defaults
+          end
+          @content = File.read(path, merged_file_read_opts(opts))
+          if content =~ YAML_FRONT_MATTER_REGEXP
+            @content = $POSTMATCH
+            prev_match = $1
+            prev_match = prev_match.gsub(/\{\{.+?\}\}/) do |match|
+              data_vars = ConrefifierUtils.setup_config(@site, opts, path)
+              value = ConrefifierUtils.convert(match, data_vars)
+              value = Jekyll::Renderer.new(@site, self).convert(value)
+              value.sub(/^<p>/, '').sub(/<\/p>$/, '').strip
+            end
 
-          value = Liquid::Template.parse(value).render(config)
-          @data[key] = Jekyll::Renderer.new(@site, self).convert(value)
-          @data[key] = @data[key].sub(/^<p>/, '').sub(/<\/p>$/, '').strip
+            data_file = SafeYAML.load(prev_match)
+            unless data_file.nil?
+              @data = Utils.deep_merge_hashes(defaults, data_file)
+            end
+          end
+        rescue SyntaxError => e
+          puts "YAML Exception reading #{path}: #{e.message}"
+        rescue Exception => e
+          puts "Error reading file #{path}: #{e.message}"
+        end
+      end
+
+      @data.each_pair do |key, value|
+        if value =~ /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/
+          data_vars = ConrefifierUtils.setup_config(@site, opts, path)
+          value = ConrefifierUtils.convert(value, data_vars)
+          value = Jekyll::Renderer.new(@site, self).convert(value)
+          @data[key] = value.sub(/^<p>/, '').sub(/<\/p>$/, '').strip
         end
       end
     end

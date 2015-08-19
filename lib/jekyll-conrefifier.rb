@@ -110,6 +110,7 @@ module Jekyll
                 contents = contents.gsub(/\[\[/, '{{')
               end
             end
+
             data[key] = SafeYAML.load(contents)
           end
         end
@@ -135,14 +136,23 @@ module Jekyll
       config = { 'site' => { 'data' => self.data, 'config' => self.config } }.merge(config)
 
       matches.each do |match|
+        match = match.is_a?(Array) ? match.first : match
+
         parsed_content = begin
-                          Liquid::Template.parse(match.first).render(config)
+                          Liquid::Template.parse(match).render(config)
                          rescue
-                          match.first
+                          match
                          end
-        unless match.first =~ /\{\{/ && parsed_content.empty?
-          contents = contents.sub(match.first, parsed_content)
-        end
+
+        contents = if parsed_content.empty?
+                      if match !~ /\{\{/
+                        contents.sub(match, '')
+                      else
+                        parsed_content
+                      end
+                   else
+                     contents.sub(match, parsed_content)
+                   end
       end
 
       contents
@@ -151,7 +161,7 @@ module Jekyll
     # allow us to use any variable within Jekyll data files; for example:
     # - '{{ site.data.conrefs.product_name[site.audience] }} Glossary'
     # renders as "GitHub Glossary" for dotcom, but "GitHub Enterprise Glossary" for Enterprise
-    def transform_liquid_variables(contents, path=nil)
+    def transform_liquid_variables(contents, path = nil)
       if (matches = contents.scan /(\{\{.+?\}\})/)
         contents = apply_vars_to_datafile(contents, matches, path)
       end

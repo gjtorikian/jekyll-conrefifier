@@ -13,7 +13,7 @@ describe("Conrefifier") do
     index_file = @dest.join('index.html')
     expect(index_file).to exist
     index_contents = File.read(index_file)
-    expect(index_contents).to include("GitHub Glossary")
+    expect(index_contents).to include("GitHub Enterprise Glossary")
   end
 
   it "writes the proper content for keys after fetching info from a data file" do

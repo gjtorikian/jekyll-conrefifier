@@ -86,6 +86,7 @@ module Jekyll
         Dir['*.{yaml,yml,json,csv}'] + Dir['*'].select { |fn| File.directory?(fn) }
       end
 
+      og_paths = []
       # all of this is copied from the Jekyll source, except...
       entries.each do |entry|
         path = self.in_source_dir(dir, entry)
@@ -99,6 +100,7 @@ module Jekyll
           when '.csv'
             data[key] = CSV.read(path, :headers => true).map(&:to_hash)
           else
+            og_paths << path
             # if we hit upon if/unless conditionals, we'll need to pause and render them
             contents = File.read(path)
             if (matches = contents.scan /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
@@ -119,7 +121,7 @@ module Jekyll
       # first need to convert them into `[[ }}`, and *then* continue with the parse
       data.each_pair do |datafile, value|
         yaml_dump = YAML::dump value
-        data[datafile] = SafeYAML.load transform_liquid_variables(yaml_dump, datafile)
+        data[datafile] = SafeYAML.load transform_liquid_variables(yaml_dump, og_paths.shift)
       end
     end
 

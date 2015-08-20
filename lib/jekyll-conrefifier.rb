@@ -1,5 +1,7 @@
 module Jekyll
   module ConrefifierUtils
+    class << self; attr_accessor :og_paths; end
+
     # fetch the custom scope vars, as defined in _config.yml
     def self.data_file_variables(config, path)
       data_vars = {}
@@ -74,7 +76,7 @@ module Jekyll
   end
 
   class Site
-    alias_method :old_read, :read
+    alias_method :old_read_collections, :read_collections
 
     def in_source_dir(*paths)
       paths.reduce(source) do |base, path|
@@ -90,7 +92,8 @@ module Jekyll
         Dir['*.{yaml,yml,json,csv}'] + Dir['*'].select { |fn| File.directory?(fn) }
       end
 
-      og_paths = []
+      ConrefifierUtils.og_paths = [] if ConrefifierUtils.og_paths.nil?
+
       # all of this is copied from the Jekyll source, except...
       entries.each do |entry|
         path = self.in_source_dir(dir, entry)
@@ -104,7 +107,8 @@ module Jekyll
           when '.csv'
             data[key] = CSV.read(path, :headers => true).map(&:to_hash)
           else
-            og_paths << path
+            src = config['data_source']
+            ConrefifierUtils.og_paths << path.slice(dir.index(src) + src.length + 1..-1).sub(/\.[^.]+\z/, '')
             # if we hit upon if/unless conditionals, we'll need to pause and render them
             contents = File.read(path)
             if (matches = contents.scan /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
@@ -119,16 +123,20 @@ module Jekyll
           end
         end
       end
+    end
 
-      # once we're all done, we need to iterate once more to parse out `{{ }}` blocks.
+    def read_collections
+      # once we're done reading in the data, we need to iterate once more to parse out `{{ }}` blocks.
       # two reasons for this: one, we need to collect every data file before attempting to
       # parse these vars; two, the Liquid parse above obliterates these tags, so we
       # first need to convert them into `[[ }}`, and *then* continue with the parse
-      data.each_pair do |datafile, value|
+      ConrefifierUtils.og_paths.each do |path|
+        keys = path.split('/')
+        value = keys.inject(data, :fetch)
         yaml_dump = YAML::dump value
-        path = og_paths.shift
-        data[datafile] = SafeYAML.load transform_liquid_variables(yaml_dump, path)
+        keys[0...-1].inject(data, :fetch)[keys.last] = SafeYAML.load transform_liquid_variables(yaml_dump, path)
       end
+      old_read_collections
     end
 
     # apply the custom scope plus the rest of the `site.data` information

@@ -18,6 +18,10 @@ module Jekyll
 
     def self.convert(content, data_vars)
       value = Liquid::Template.parse(content).render(data_vars)
+      # protects against situations where [page.version] prevented a conversion
+      if value =~ /\{\{/
+        value = Liquid::Template.parse(value).render(data_vars)
+      end
       value = value.gsub('"', '\"')
     end
   end
@@ -122,11 +126,12 @@ module Jekyll
       # first need to convert them into `[[ }}`, and *then* continue with the parse
       data.each_pair do |datafile, value|
         yaml_dump = YAML::dump value
-        data[datafile] = SafeYAML.load transform_liquid_variables(yaml_dump, og_paths.shift)
+        path = og_paths.shift
+        data[datafile] = SafeYAML.load transform_liquid_variables(yaml_dump, path)
       end
     end
 
-    # apply the custom scoope plus the rest of the `site.data` information
+    # apply the custom scope plus the rest of the `site.data` information
     def apply_vars_to_datafile(contents, matches, path)
       return contents if matches.empty?
 
@@ -144,17 +149,10 @@ module Jekyll
                           match
                          end
 
-        contents = if parsed_content.empty?
-                      if match !~ /\{\{/
-                        contents.sub(match, '')
-                      else
-                        parsed_content
-                      end
-                   else
-                     contents.sub(match, parsed_content)
-                   end
+        unless match =~ /\{\{/ && parsed_content.empty?
+          contents = contents.sub(match, parsed_content)
+        end
       end
-
       contents
     end
 

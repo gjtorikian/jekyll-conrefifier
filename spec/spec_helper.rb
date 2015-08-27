@@ -1,8 +1,6 @@
 require "jekyll"
 require File.expand_path("lib/jekyll-conrefifier.rb")
 
-Jekyll::Document::YAML_FRONT_MATTER_REGEXP = /\A(---\s*\n.*?\n?)^((---|\.\.\.)\s*$\n?)/m
-
 RSpec.configure do |config|
   config.run_all_when_everything_filtered = true
   config.filter_run :focus

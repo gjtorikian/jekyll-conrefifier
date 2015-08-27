@@ -29,6 +29,9 @@ module Jekyll
   end
 
   class Document
+    # remove when on a moderner Jekyll
+    FRONT_REGEXP = /\A(---\s*\n.*?\n?)^((---|\.\.\.)\s*$\n?)/m
+
     # allow us to use any variable within Jekyll Frontmatter; for example:
     # title: What are {{ site.data.conrefs.product_name[site.audience] }} Pages?
     # renders as "GitHub Pages?" for dotcom, but "GitHub Enterprise Pages?" for Enterprise
@@ -42,7 +45,7 @@ module Jekyll
             @data = defaults
           end
           @content = File.read(path, merged_file_read_opts(opts))
-          if content =~ YAML_FRONT_MATTER_REGEXP
+          if content =~ FRONT_REGEXP
             @content = $POSTMATCH
             prev_match = $1
             prev_match = prev_match.gsub(/\{\{.+?\}\}/) do |match|

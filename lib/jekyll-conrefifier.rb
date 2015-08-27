@@ -52,6 +52,8 @@ module Jekyll
               data_vars = ConrefifierUtils.setup_config(@site, opts, path)
               value = ConrefifierUtils.convert(match, data_vars)
               value = Jekyll::Renderer.new(@site, self).convert(value)
+              value = value.gsub(/:/, '&#58;')
+              value = value.gsub(/\\"/, '&#34;')
               value.sub(/^<p>/, '').sub(/<\/p>$/, '').strip
             end
 

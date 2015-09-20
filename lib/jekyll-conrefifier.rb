@@ -26,6 +26,31 @@ module Jekyll
       end
       value = value.gsub('"', '\"')
     end
+
+    # apply the custom scope plus the rest of the `site.data` information
+    def self.apply_vars_to_datafile(contents, matches, path, site)
+      return contents if matches.empty?
+
+      data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(site.config, path)
+
+      config = { 'page' => data_vars }
+      config = { 'site' => { 'data' => site.data, 'config' => site.config } }.merge(config)
+
+      matches.each do |match|
+        match = match.is_a?(Array) ? match.first : match
+
+        parsed_content = begin
+                          Liquid::Template.parse(match).render(config)
+                         rescue
+                          match
+                         end
+
+        unless match =~ /\{\{/ && parsed_content.empty?
+          contents = contents.sub(match, parsed_content)
+        end
+      end
+      contents
+    end
   end
 
   class Document
@@ -80,18 +105,18 @@ module Jekyll
     end
   end
 
-  class Site
-    alias_method :old_read_collections, :read_collections
+  class DataReader
+    # alias_method :old_read_collections, :read_collections
 
-    def in_source_dir(*paths)
-      paths.reduce(source) do |base, path|
-        Jekyll.sanitized_path(base, path)
-      end
-    end
+    # def in_source_dir(*paths)
+    #   paths.reduce(source) do |base, path|
+    #     Jekyll.sanitized_path(base, path)
+    #   end
+    # end
 
     # allows us to filter data file contents via conditionals, eg. `{% if page.version == ... %}`
     def read_data_to(dir, data)
-      return unless File.directory?(dir) && (!safe || !File.symlink?(dir))
+      return unless File.directory?(dir) && (!site.safe || !File.symlink?(dir))
 
       entries = Dir.chdir(dir) do
         Dir['*.{yaml,yml,json,csv}'] + Dir['*'].select { |fn| File.directory?(fn) }
@@ -101,7 +126,7 @@ module Jekyll
 
       # all of this is copied from the Jekyll source, except...
       entries.each do |entry|
-        path = self.in_source_dir(dir, entry)
+        path = @site.in_source_dir(dir, entry)
         next if File.symlink?(path) && safe
 
         key = sanitize_filename(File.basename(entry, '.*'))
@@ -112,14 +137,14 @@ module Jekyll
           when '.csv'
             data[key] = CSV.read(path, :headers => true).map(&:to_hash)
           else
-            src = config['data_source']
+            src = site.config['data_source']
             ConrefifierUtils.og_paths << path.slice(dir.index(src) + src.length + 1..-1).sub(/\.[^.]+\z/, '')
             # if we hit upon if/unless conditionals, we'll need to pause and render them
             contents = File.read(path)
             if (matches = contents.scan /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
-              unless ConrefifierUtils.data_file_variables(config, path).nil?
+              unless ConrefifierUtils.data_file_variables(site.config, path).nil?
                 contents = contents.gsub(/\{\{/, '[[')
-                contents = apply_vars_to_datafile(contents, matches, path)
+                contents = ConrefifierUtils.apply_vars_to_datafile(contents, matches, path, site)
                 contents = contents.gsub(/\[\[/, '{{')
               end
             end
@@ -129,44 +154,23 @@ module Jekyll
         end
       end
     end
+  end
 
-    def read_collections
+  class CollectionReader
+    alias_method :old_read, :read
+
+    def read
       # once we're done reading in the data, we need to iterate once more to parse out `{{ }}` blocks.
       # two reasons for this: one, we need to collect every data file before attempting to
       # parse these vars; two, the Liquid parse above obliterates these tags, so we
       # first need to convert them into `[[ }}`, and *then* continue with the parse
       ConrefifierUtils.og_paths.each do |path|
         keys = path.split('/')
-        value = keys.inject(data, :fetch)
+        value = keys.inject(site.data, :fetch)
         yaml_dump = YAML::dump value
-        keys[0...-1].inject(data, :fetch)[keys.last] = SafeYAML.load transform_liquid_variables(yaml_dump, path)
+        keys[0...-1].inject(site.data, :fetch)[keys.last] = SafeYAML.load transform_liquid_variables(yaml_dump, path)
       end
-      old_read_collections
-    end
-
-    # apply the custom scope plus the rest of the `site.data` information
-    def apply_vars_to_datafile(contents, matches, path)
-      return contents if matches.empty?
-
-      data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(config, path)
-
-      config = { 'page' => data_vars }
-      config = { 'site' => { 'data' => self.data, 'config' => self.config } }.merge(config)
-
-      matches.each do |match|
-        match = match.is_a?(Array) ? match.first : match
-
-        parsed_content = begin
-                          Liquid::Template.parse(match).render(config)
-                         rescue
-                          match
-                         end
-
-        unless match =~ /\{\{/ && parsed_content.empty?
-          contents = contents.sub(match, parsed_content)
-        end
-      end
-      contents
+      old_read
     end
 
     # allow us to use any variable within Jekyll data files; for example:
@@ -174,7 +178,7 @@ module Jekyll
     # renders as "GitHub Glossary" for dotcom, but "GitHub Enterprise Glossary" for Enterprise
     def transform_liquid_variables(contents, path = nil)
       if (matches = contents.scan /(\{\{.+?\}\})/)
-        contents = apply_vars_to_datafile(contents, matches, path)
+        contents = ConrefifierUtils.apply_vars_to_datafile(contents, matches, path, site)
       end
 
       contents

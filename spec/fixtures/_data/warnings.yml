@@ -1,0 +1,6 @@
+article_name: |
+  {% if page.version == '2.1' %}
+    - Article v2.0
+  {% else %}
+    - A {{ page.version }} Article
+  {% endif %}

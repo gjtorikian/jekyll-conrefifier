@@ -64,4 +64,12 @@ describe("Conrefifier") do
     expect(filtering_layout_contents.scan(/Article v2.0/).count).to eq(1)
     expect(filtering_layout_contents.scan(/Ignored/).count).to eq(1)
   end
+
+  it 'filters items even if they have other curlies' do
+    warnings = @dest.join("warnings.html")
+    expect(warnings).to exist
+    warnings_contents = File.read(warnings)
+    expect(warnings_contents.scan(/- A dotcom Article/).count).to eq(1)
+    expect(warnings_contents.scan(/Article v2.0/).count).to eq(0)
+  end
 end

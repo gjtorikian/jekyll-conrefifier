@@ -116,11 +116,9 @@ module Jekyll
             ConrefifierUtils.og_paths << path.slice(dir.index(src) + src.length + 1..-1).sub(/\.[^.]+\z/, '')
             # if we hit upon if/unless conditionals, we'll need to pause and render them
             contents = File.read(path)
-            if (matches = contents.scan /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
+            if (matches = contents.scan /(\s*\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
               unless ConrefifierUtils.data_file_variables(config, path).nil?
-                contents = contents.gsub(/\{\{/, '[[')
-                contents = apply_vars_to_datafile(contents, matches, path)
-                contents = contents.gsub(/\[\[/, '{{')
+                contents = apply_vars_to_datafile(contents, matches, path, { preserve_all: true } )
               end
             end
 
@@ -139,13 +137,14 @@ module Jekyll
         keys = path.split('/')
         value = keys.inject(data, :fetch)
         yaml_dump = YAML::dump value
+
         keys[0...-1].inject(data, :fetch)[keys.last] = SafeYAML.load transform_liquid_variables(yaml_dump, path)
       end
       old_read_collections
     end
 
     # apply the custom scope plus the rest of the `site.data` information
-    def apply_vars_to_datafile(contents, matches, path)
+    def apply_vars_to_datafile(contents, matches, path, preserve_all: true, preserve_non_vars: false)
       return contents if matches.empty?
 
       data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(config, path)
@@ -155,16 +154,21 @@ module Jekyll
 
       matches.each do |match|
         match = match.is_a?(Array) ? match.first : match
+        safe_match = if preserve_all
+                       match.gsub(/\{\{/, '[[\1')
+                      elsif preserve_non_vars
+                        match.gsub(/\{\{(\s*)(?!\s*(site|page))/, '[[\1')
+                      end
 
         parsed_content = begin
-                          Liquid::Template.parse(match).render(config)
-                         rescue
+                          parsed = Liquid::Template.parse(safe_match).render(config)
+                          parsed.gsub(/\[\[/, '{{\1') if preserve_all || preserve_non_vars
+                         rescue Exception => e
+                          puts "Parse error in #{matches}: #{e}"
                           match
                          end
-
-        unless match =~ /\{\{/ && parsed_content.empty?
-          contents = contents.sub(match, parsed_content)
-        end
+        next if parsed_content.nil?
+        contents = contents.sub(match, parsed_content)
       end
       contents
     end
@@ -174,7 +178,7 @@ module Jekyll
     # renders as "GitHub Glossary" for dotcom, but "GitHub Enterprise Glossary" for Enterprise
     def transform_liquid_variables(contents, path = nil)
       if (matches = contents.scan /(\{\{.+?\}\})/)
-        contents = apply_vars_to_datafile(contents, matches, path)
+        contents = apply_vars_to_datafile(contents, matches, path, preserve_all: false, preserve_non_vars: true)
       end
 
       contents

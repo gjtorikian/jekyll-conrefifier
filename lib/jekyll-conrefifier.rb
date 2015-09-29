@@ -122,7 +122,12 @@ module Jekyll
               end
             end
 
-            data[key] = SafeYAML.load(contents)
+            begin
+              data[key] = SafeYAML.load(contents)
+            rescue StandardError => e
+              puts "Load error in \n#{contents}: #{e}"
+              raise e
+            end
           end
         end
       end

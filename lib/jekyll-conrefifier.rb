@@ -15,16 +15,14 @@ module Jekyll
     def self.setup_config(site, opts, path)
       data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(site.config, opts[:actual_path] || path)
       config = { 'page' => data_vars }
-      config = { 'site' => { 'data' => site.data, 'config' => site.config } }.merge(config)
+      { 'site' => { 'data' => site.data, 'config' => site.config } }.merge(config)
     end
 
     def self.convert(content, data_vars)
       value = Liquid::Template.parse(content).render(data_vars)
       # protects against situations where [page.version] prevented a conversion
-      if value =~ /\{\{/
-        value = Liquid::Template.parse(value).render(data_vars)
-      end
-      value = value.gsub('"', '\"')
+      value = Liquid::Template.parse(value).render(data_vars) if value =~ /\{\{/
+      value.gsub('"', '\"')
     end
   end
 
@@ -41,9 +39,7 @@ module Jekyll
       else
         begin
           defaults = @site.frontmatter_defaults.all(url, collection.label.to_sym)
-          unless defaults.empty?
-            @data = defaults
-          end
+          @data = defaults unless defaults.empty?
           @content = File.read(path, merged_file_read_opts(opts))
           if content =~ FRONT_REGEXP
             @content = $POSTMATCH
@@ -54,7 +50,7 @@ module Jekyll
               value = Jekyll::Renderer.new(@site, self).convert(value)
               value = value.gsub(/:/, '&#58;')
               value = value.gsub(/\\"/, '&#34;')
-              value.sub(/^<p>/, '').sub(/<\/p>$/, '').strip
+              value.sub(/^<p>/, '').sub(%r{</p>$}, '').strip
             end
 
             data_file = SafeYAML.load(prev_match)
@@ -70,12 +66,12 @@ module Jekyll
       end
 
       @data.each_pair do |key, value|
-        if value =~ /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/
-          data_vars = ConrefifierUtils.setup_config(@site, opts, path)
-          value = ConrefifierUtils.convert(value, data_vars)
-          value = Jekyll::Renderer.new(@site, self).convert(value)
-          @data[key] = value.sub(/^<p>/, '').sub(/<\/p>$/, '').strip
-        end
+        next unless value =~ /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/
+
+        data_vars = ConrefifierUtils.setup_config(@site, opts, path)
+        value = ConrefifierUtils.convert(value, data_vars)
+        value = Jekyll::Renderer.new(@site, self).convert(value)
+        @data[key] = value.sub(/^<p>/, '').sub(%r{</p>$}, '').strip
       end
     end
   end
@@ -166,11 +162,11 @@ module Jekyll
                       end
 
         parsed_content = begin
-                          parsed = Liquid::Template.parse(safe_match).render(config)
-                          parsed.gsub(/\[\[/, '{{\1') if preserve_all || preserve_non_vars
-                         rescue Exception => e
-                          puts "Parse error in #{matches}: #{e}"
-                          match
+                           parsed = Liquid::Template.parse(safe_match).render(config)
+                           parsed.gsub(/\[\[/, '{{\1') if preserve_all || preserve_non_vars
+                         rescue StandardError => e
+                           puts "Parse error in \n#{matches}: #{e}"
+                           match
                          end
         next if parsed_content.nil?
         contents = contents.sub(match, parsed_content)
@@ -211,7 +207,7 @@ module Jekyll
       data_file = context.registers[:site].data["data_render_#{@id}"]
       return data_file unless data_file.nil?
 
-      path = @id.gsub('.', '/')
+      path = @id.tr('.', '/')
       data_source = File.join(context.registers[:site].source, context.registers[:site].config['data_source'])
       data_file = File.read("#{data_source}/#{path}.yml")
       context.registers[:site].data["data_render_#{@id}"] = data_file
@@ -221,7 +217,7 @@ module Jekyll
       datafile = fetch_datafile(context, @keys)
 
       config = { 'page' => @hash_args }
-      config = { 'site' => { "data" => context.registers[:site].data } }.merge(config)
+      config = { 'site' => { 'data' => context.registers[:site].data } }.merge(config)
       versioned_yaml = SafeYAML.load(Liquid::Template.parse(datafile).render(config))
       context.registers[:site].data['data_render'] = versioned_yaml
       nil

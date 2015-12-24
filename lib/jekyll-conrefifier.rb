@@ -1,3 +1,7 @@
+begin
+  require 'awesome_print'
+rescue LoadError; end
+
 module Jekyll
   module ConrefifierUtils
     class << self; attr_accessor :og_paths; end

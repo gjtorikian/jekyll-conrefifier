@@ -4,13 +4,13 @@ gems:
 collections:
   articles:
     output: true
-    permalink: /articles/:title/
+    permalink: /articles/:slug/
 
 defaults:
   -
     scope:
       path: ""
-      type: "_articles"
+      type: "articles"
     values:
       layout: "article"
 

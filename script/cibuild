@@ -2,3 +2,4 @@
 
 script/bootstrap > /dev/null 2>&1
 bundle exec rake spec
+script/fmt

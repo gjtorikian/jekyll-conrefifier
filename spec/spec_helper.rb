@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 require "jekyll"
 require File.expand_path("lib/jekyll-conrefifier.rb")
 
 RSpec.configure do |config|
   config.run_all_when_everything_filtered = true
   config.filter_run :focus
-  config.order = 'random'
+  config.order = "random"
 
   config.expect_with :rspec do |c|
     c.syntax = :expect
@@ -19,15 +21,15 @@ RSpec.configure do |config|
     @layouts_src = @fixtures_path.join("_layouts")
     @plugins_src = @fixtures_path.join("_plugins")
 
-    @site = Jekyll::Site.new(Jekyll.configuration({
-      "source"      => @fixtures_path.to_s,
-      "destination" => @dest.to_s,
-      "plugins"     => @plugins_src.to_s,
-      "collections" => {
-        "articles" => {"output" => true},
-        "authors"  => {}
-      }
-    }))
+    @site = Jekyll::Site.new(Jekyll.configuration(
+                               "source"      => @fixtures_path.to_s,
+                               "destination" => @dest.to_s,
+                               "plugins"     => @plugins_src.to_s,
+                               "collections" => {
+                                 "articles" => { "output" => true },
+                                 "authors"  => {},
+                               }
+                             ))
 
     @dest.rmtree if @dest.exist?
     @site.process
@@ -46,7 +48,7 @@ RSpec.configure do |config|
   end
 
   def setup_post(file)
-    Jekyll::Post.new(@site, @fixtures_path.to_s, '', file)
+    Jekyll::Post.new(@site, @fixtures_path.to_s, "", file)
   end
 
   def setup_page(file)
@@ -54,7 +56,7 @@ RSpec.configure do |config|
   end
 
   def destination_file_exists?(file)
-    File.exists?(File.join(@dest.to_s, file))
+    File.exist?(File.join(@dest.to_s, file))
   end
 
   def destination_file_contents(file)
@@ -67,7 +69,7 @@ RSpec.configure do |config|
 
   def new_redirect_page(permalink)
     page = JekyllRedirectFrom::RedirectPage.new(@site, @site.source, "", "")
-    page.data['permalink'] = permalink
+    page.data["permalink"] = permalink
     page
   end
 end

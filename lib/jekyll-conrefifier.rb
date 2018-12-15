@@ -45,35 +45,33 @@ module Jekyll
           @content = File.read(path, merged_file_read_opts(opts))
           if content =~ FRONT_REGEXP
             @content = $POSTMATCH
-            prev_match = $1
-            prev_match = prev_match.gsub(/\{\{.+?\}\}/) do |match|
+            prev_match = Regexp.last_match(1)
+            prev_match = prev_match.gsub(%r!\{\{.+?\}\}!) do |match|
               data_vars = ConrefifierUtils.setup_config(@site, opts, path)
               value = ConrefifierUtils.convert(match, data_vars)
               value = Jekyll::Renderer.new(@site, self).convert(value)
-              value = value.gsub(/:/, '&#58;')
-              value = value.gsub(/\\"/, '&#34;')
-              value.sub(/^<p>/, '').sub(%r{</p>$}, '').strip
+              value = value.gsub(%r!:!, "&#58;")
+              value = value.gsub(%r!\\"!, "&#34;")
+              value.sub(%r!^<p>!, "").sub(%r!</p>$!, "").strip
             end
 
             data_file = SafeYAML.load(prev_match)
-            unless data_file.nil?
-              @data = Utils.deep_merge_hashes(defaults, data_file)
-            end
+            @data = Utils.deep_merge_hashes(defaults, data_file) unless data_file.nil?
           end
         rescue SyntaxError => e
-          puts "YAML Exception reading #{path}: #{e.message}"
-        rescue Exception => e
-          puts "Error reading file #{path}: #{e.message}"
+          Jekyll.logger.error "YAML Exception reading #{path}: #{e.message}"
+        rescue StandardError => e
+          Jekyll.logger.error "Error reading file #{path}: #{e.message}"
         end
       end
 
       @data.each_pair do |key, value|
-        next unless value =~ /(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/
+        next unless value =~ %r!(\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})!
 
         data_vars = ConrefifierUtils.setup_config(@site, opts, path)
         value = ConrefifierUtils.convert(value, data_vars)
         value = Jekyll::Renderer.new(@site, self).convert(value)
-        @data[key] = value.sub(/^<p>/, '').sub(%r{</p>$}, '').strip
+        @data[key] = value.sub(%r!^<p>!, "").sub(%r!</p>$!, "").strip
       end
     end
   end
@@ -92,17 +90,17 @@ module Jekyll
       return unless File.directory?(dir) && (!safe || !File.symlink?(dir))
 
       entries = Dir.chdir(dir) do
-        Dir['*.{yaml,yml,json,csv}'] + Dir['*'].select { |fn| File.directory?(fn) }
+        Dir["*.{yaml,yml,json,csv}"] + Dir["*"].select { |fn| File.directory?(fn) }
       end
 
       ConrefifierUtils.og_paths = [] if ConrefifierUtils.og_paths.nil?
 
       # all of this is copied from the Jekyll source, except...
       entries.each do |entry|
-        path = self.in_source_dir(dir, entry)
+        path = in_source_dir(dir, entry)
         next if File.symlink?(path) && safe
 
-        key = sanitize_filename(File.basename(entry, '.*'))
+        key = sanitize_filename(File.basename(entry, ".*"))
         if File.directory?(path)
           read_data_to(path, data[key] = {})
         else
@@ -114,7 +112,7 @@ module Jekyll
             ConrefifierUtils.og_paths << path.slice(dir.index(src) + src.length + 1..-1).sub(%r!\.[^.]+\z!, "")
             # if we hit upon if/unless conditionals, we'll need to pause and render them
             contents = File.read(path)
-            if (matches = contents.scan /(\s*\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
+            if (matches = contents.scan %r!(\s*\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})!m)
               unless ConrefifierUtils.data_file_variables(config, path).nil?
                 contents = apply_vars_to_datafile(contents, matches, path, :preserve_all => true)
               end
@@ -123,7 +121,7 @@ module Jekyll
             begin
               data[key] = SafeYAML.load(contents)
             rescue StandardError => e
-              puts "Load error in \n#{contents}: #{e}"
+              Jekyll.logger.error "Load error in \n#{contents}: #{e}"
               raise e
             end
           end
@@ -153,21 +151,21 @@ module Jekyll
       data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(config, path)
 
       config = { "page" => data_vars }
-      config = { "site" => { "data" => self.data, "config" => self.config } }.merge(config)
+      config = { "site" => { "data" => data, "config" => self.config } }.merge(config)
 
       matches.each do |match|
         match = match.is_a?(Array) ? match.first : match
         safe_match = if preserve_all
-                       match.gsub(/\{\{/, '[[\1')
-                      elsif preserve_non_vars
-                        match.gsub(/\{\{(\s*)(?!\s*(site|page))/, '[[\1')
-                      end
+                       match.gsub(%r!\{\{!, '[[\1')
+                     elsif preserve_non_vars
+                       match.gsub(%r!\{\{(\s*)(?\!\s*(site|page))!, '[[\1')
+                     end
 
         parsed_content = begin
                            parsed = Liquid::Template.parse(safe_match).render(config)
-                           parsed.gsub(/\[\[/, '{{\1') if preserve_all || preserve_non_vars
+                           parsed.gsub(%r!\[\[!, '{{\1') if preserve_all || preserve_non_vars
                          rescue StandardError => e
-                           puts "Parse error in \n#{matches}: #{e}"
+                           Jekyll.logger.error "Parse error in \n#{matches}: #{e}"
                            match
                          end
         next if parsed_content.nil?
@@ -181,8 +179,8 @@ module Jekyll
     # - '{{ site.data.conrefs.product_name[site.audience] }} Glossary'
     # renders as "GitHub Glossary" for dotcom, but "GitHub Enterprise Glossary" for Enterprise
     def transform_liquid_variables(contents, path = nil)
-      if (matches = contents.scan /(\{\{.+?\}\})/)
-        contents = apply_vars_to_datafile(contents, matches, path, preserve_all: false, preserve_non_vars: true)
+      if (matches = contents.scan %r!(\{\{.+?\}\})!)
+        contents = apply_vars_to_datafile(contents, matches, path, :preserve_all => false, :preserve_non_vars => true)
       end
 
       contents
@@ -195,12 +193,16 @@ module Jekyll
 
       keys = text.strip.split(".", 3)
       keys.shift(2) # this is just site.data
-      paren_arg = keys.last.match(/\((.+?)\)/)
+      paren_arg = keys.last.match(%r!\((.+?)\)!)
       unless paren_arg.nil?
         last_key = keys.last.sub(paren_arg[0], "")
         keys.pop
         keys << last_key
-        @hash_args = paren_arg[1].gsub(/[{}:]/,'').split(', ').map{|h| h1,h2 = h.split('=>'); {h1.strip => eval(h2.strip)}}.reduce(:merge)
+        @hash_args = paren_arg[1]
+          .gsub(%r![{}:]!, "")
+          .split(", ")
+          .map { |h| h1, h2 = h.split("=>"); { h1.strip => eval(h2.strip) } }
+          .reduce(:merge)
       end
       @keys = keys
       @id = keys.join("-")

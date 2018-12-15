@@ -10,7 +10,10 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Garen J. Torikian"]
   spec.email         = ["gjtorikian@gmail.com"]
   spec.summary       = "Allows you to use Liquid variables in various places in Jekyll"
-  spec.description   = "A set of monkey patches that allows you to use Liquid variables in a variety of places in Jekyll, like frontmatter or data files."
+  spec.description   = <<~DESCRIPTION
+    A set of monkey patches that allows you to use Liquid variables
+    in a variety of places in Jekyll, like frontmatter or data files.
+  DESCRIPTION
   spec.homepage      = ""
   spec.license       = "MIT"
 

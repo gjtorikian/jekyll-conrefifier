@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Jekyll
   module ConrefifierUtils
     class << self; attr_accessor :og_paths; end
@@ -5,30 +7,30 @@ module Jekyll
     # fetch the custom scope vars, as defined in _config.yml
     def self.data_file_variables(config, path)
       data_vars = {}
-      scopes = config['data_file_variables'].select { |v| v['scope']['path'].empty? || Regexp.new(v['scope']['path']) =~ path }
+      scopes = config["data_file_variables"].select { |v| v["scope"]["path"].empty? || Regexp.new(v["scope"]["path"]) =~ path }
       scopes.each do |scope|
-        data_vars = data_vars.merge(scope['values'])
+        data_vars = data_vars.merge(scope["values"])
       end
       data_vars
     end
 
     def self.setup_config(site, opts, path)
       data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(site.config, opts[:actual_path] || path)
-      config = { 'page' => data_vars }
-      { 'site' => { 'data' => site.data, 'config' => site.config } }.merge(config)
+      config = { "page" => data_vars }
+      { "site" => { "data" => site.data, "config" => site.config } }.merge(config)
     end
 
     def self.convert(content, data_vars)
       value = Liquid::Template.parse(content).render(data_vars)
       # protects against situations where [page.version] prevented a conversion
-      value = Liquid::Template.parse(value).render(data_vars) if value =~ /\{\{/
+      value = Liquid::Template.parse(value).render(data_vars) if value =~ %r!\{\{!
       value.gsub('"', '\"')
     end
   end
 
   class Document
     # remove when on a moderner Jekyll
-    FRONT_REGEXP = /\A(---\s*\n.*?\n?)^((---|\.\.\.)\s*$\n?)/m
+    FRONT_REGEXP = %r!\A(---\s*\n.*?\n?)^((---|\.\.\.)\s*$\n?)!m.freeze
 
     # allow us to use any variable within Jekyll Frontmatter; for example:
     # title: What are {{ site.data.conrefs.product_name[site.audience] }} Pages?
@@ -105,16 +107,16 @@ module Jekyll
           read_data_to(path, data[key] = {})
         else
           case File.extname(path).downcase
-          when '.csv'
+          when ".csv"
             data[key] = CSV.read(path, :headers => true).map(&:to_hash)
           else
-            src = config['data_source']
-            ConrefifierUtils.og_paths << path.slice(dir.index(src) + src.length + 1..-1).sub(/\.[^.]+\z/, '')
+            src = config["data_source"]
+            ConrefifierUtils.og_paths << path.slice(dir.index(src) + src.length + 1..-1).sub(%r!\.[^.]+\z!, "")
             # if we hit upon if/unless conditionals, we'll need to pause and render them
             contents = File.read(path)
             if (matches = contents.scan /(\s*\{% (?:if|unless).+? %\}.*?\{% end(?:if|unless) %\})/m)
               unless ConrefifierUtils.data_file_variables(config, path).nil?
-                contents = apply_vars_to_datafile(contents, matches, path, { preserve_all: true } )
+                contents = apply_vars_to_datafile(contents, matches, path, :preserve_all => true)
               end
             end
 
@@ -135,9 +137,9 @@ module Jekyll
       # parse these vars; two, the Liquid parse above obliterates these tags, so we
       # first need to convert them into `[[ }}`, and *then* continue with the parse
       ConrefifierUtils.og_paths.each do |path|
-        keys = path.split('/')
+        keys = path.split("/")
         value = keys.inject(data, :fetch)
-        yaml_dump = YAML::dump value
+        yaml_dump = YAML.dump value
 
         keys[0...-1].inject(data, :fetch)[keys.last] = SafeYAML.load transform_liquid_variables(yaml_dump, path)
       end
@@ -150,8 +152,8 @@ module Jekyll
 
       data_vars = path.nil? ? {} : ConrefifierUtils.data_file_variables(config, path)
 
-      config = { 'page' => data_vars }
-      config = { 'site' => { 'data' => self.data, 'config' => self.config } }.merge(config)
+      config = { "page" => data_vars }
+      config = { "site" => { "data" => self.data, "config" => self.config } }.merge(config)
 
       matches.each do |match|
         match = match.is_a?(Array) ? match.first : match
@@ -169,6 +171,7 @@ module Jekyll
                            match
                          end
         next if parsed_content.nil?
+
         contents = contents.sub(match, parsed_content)
       end
       contents
@@ -190,25 +193,25 @@ module Jekyll
     def initialize(tag_name, text, tokens)
       super
 
-      keys = text.strip.split('.', 3)
+      keys = text.strip.split(".", 3)
       keys.shift(2) # this is just site.data
       paren_arg = keys.last.match(/\((.+?)\)/)
       unless paren_arg.nil?
-        last_key = keys.last.sub(paren_arg[0], '')
+        last_key = keys.last.sub(paren_arg[0], "")
         keys.pop
         keys << last_key
         @hash_args = paren_arg[1].gsub(/[{}:]/,'').split(', ').map{|h| h1,h2 = h.split('=>'); {h1.strip => eval(h2.strip)}}.reduce(:merge)
       end
       @keys = keys
-      @id = keys.join('-')
+      @id = keys.join("-")
     end
 
-    def fetch_datafile(context, keys)
+    def fetch_datafile(context, _keys)
       data_file = context.registers[:site].data["data_render_#{@id}"]
       return data_file unless data_file.nil?
 
-      path = @id.tr('.', '/')
-      data_source = File.join(context.registers[:site].source, context.registers[:site].config['data_source'])
+      path = @id.tr(".", "/")
+      data_source = File.join(context.registers[:site].source, context.registers[:site].config["data_source"])
       data_file = File.read("#{data_source}/#{path}.yml")
       context.registers[:site].data["data_render_#{@id}"] = data_file
     end
@@ -216,13 +219,13 @@ module Jekyll
     def render(context)
       datafile = fetch_datafile(context, @keys)
 
-      config = { 'page' => @hash_args }
-      config = { 'site' => { 'data' => context.registers[:site].data } }.merge(config)
+      config = { "page" => @hash_args }
+      config = { "site" => { "data" => context.registers[:site].data } }.merge(config)
       versioned_yaml = SafeYAML.load(Liquid::Template.parse(datafile).render(config))
-      context.registers[:site].data['data_render'] = versioned_yaml
+      context.registers[:site].data["data_render"] = versioned_yaml
       nil
     end
   end
 
-  Liquid::Template.register_tag('data_render', Jekyll::DataRenderTag)
+  Liquid::Template.register_tag("data_render", Jekyll::DataRenderTag)
 end
